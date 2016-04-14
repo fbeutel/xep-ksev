@@ -218,7 +218,7 @@ By providing a mechanism to cross-sign other keys one can eliminate the need of 
 <message from='juliet@capulet.lit/orchard'
          to='from='juliet@capulet.lit/balcony'
          id='verifymsg1'>
-  <verify xmlns='urn:xmpp:ksev:0' hash='sha256'>
+  <verify xmlns='urn:xmpp:ksev:0' hash='sha-256'>
     <key id='orchard_key_id' />
     <key id='another_orchard_key_id' />
   </verify>
@@ -259,6 +259,7 @@ This solves the problem of possible race conditions between devices by passing o
     
     <section3 topic='Fingerprint mechanisms' anchor='fingerprints'>
         todo: specify hashing mechanisms. A fingerprint mechanism has to specify the hashing algorithm, the number of times it is applied and the form of the final data that will be displayed to the user (e.g. groups of four characters, separated by ":").
+        todo: consider &xep0300;
     </section3>
     </section2>
     
