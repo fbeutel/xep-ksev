@@ -35,7 +35,7 @@
   </author>
   <revision>
     <version>0.0.1</version>
-    <date>2016-04-13</date>
+    <date>2016-04-14</date>
     <initials>fb</initials>
     <remark><p>First draft.</p></remark>
   </revision>
@@ -86,7 +86,9 @@ By providing a mechanism to cross-sign other keys one can eliminate the need of 
             <li>"x509" (a x.509 certificate)</li>
         </ul>
         
-        Other types can be defined by later revisions of this specification or by additional XEPs.</dd></di>
+        <p><strong>Todo: </strong> Specify exactly how the key and signature data for each type should look like, e.g. ASCII-Armored or not...</p>
+        
+        <p>Other types can be defined by later revisions of this specification or by additional XEPs.</p></dd></di>
     </dl>
 </section1>
 <section1 topic='Use Cases' anchor='usecases'>
@@ -140,7 +142,9 @@ By providing a mechanism to cross-sign other keys one can eliminate the need of 
   <pubsub xmlns='http://jabber.org/protocol/pubsub'>
     <publish node='urn:xmpp:ksev:0:sigmetadata'>
       <item id='signature_id'>
-        <metadata xmlns='urn:xmpp:ksev:0:sigmetadata' keyid='...id_of_the_signing_key...' keyowner='romeo@juliet@capulet.lit'>
+        <metadata xmlns='urn:xmpp:ksev:0:sigmetadata'
+                  keyid='...id_of_the_signing_key...'
+                  keyowner='romeo@juliet@capulet.lit'>
           <url>http://example.com/mydocument</url>
           or
           <key keyid='id_of_the_signed_key' keyowner='romeo@example.com'/>
