@@ -1,0 +1,282 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE xep SYSTEM 'xep.dtd' [
+  <!ENTITY % ents SYSTEM 'xep.ent'>
+%ents;
+]>
+<?xml-stylesheet type='text/xsl' href='xep.xsl'?>
+<xep>
+<header>
+  <title>Public Key and Signature Exchange and Verification</title>
+  <abstract>This specification provide means to make key trust management easier for the end user by specifying techniques to publish signatures and public keys as well as a way to negotiate and compare key fingerprints.</abstract>
+  <legal>
+    <copyright>This XMPP Extension Protocol is copyright (c) 1999 - 2014 by the XMPP Standards Foundation (XSF).</copyright>
+    <permissions>Permission is hereby granted, free of charge, to any person obtaining a copy of this specification (the &quot;Specification&quot;), to make use of the Specification without restriction, including without limitation the rights to implement the Specification in a software program, deploy the Specification in a network service, and copy, modify, merge, publish, translate, distribute, sublicense, or sell copies of the Specification, and to permit persons to whom the Specification is furnished to do so, subject to the condition that the foregoing copyright notice and this permission notice shall be included in all copies or substantial portions of the Specification. Unless separate permission is granted, modified works that are redistributed shall not contain misleading information regarding the authors, title, number, or publisher of the Specification, and shall not claim endorsement of the modified works by the authors, any organization or project to which the authors belong, or the XMPP Standards Foundation.</permissions>
+    <warranty>## NOTE WELL: This Specification is provided on an &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied, including, without limitation, any warranties or conditions of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A PARTICULAR PURPOSE. In no event shall the XMPP Standards Foundation or the authors of this Specification be liable for any claim, damages, or other liability, whether in an action of contract, tort, or otherwise, arising from, out of, or in connection with the Specification or the implementation, deployment, or other use of the Specification. ##</warranty>
+    <liability>In no event and under no legal theory, whether in tort (including negligence), contract, or otherwise, unless required by applicable law (such as deliberate and grossly negligent acts) or agreed to in writing, shall the XMPP Standards Foundation or any author of this Specification be liable for damages, including any direct, indirect, special, incidental, or consequential damages of any character arising out of the use or inability to use the Specification (including but not limited to damages for loss of goodwill, work stoppage, computer failure or malfunction, or any and all other commercial damages or losses), even if the XMPP Standards Foundation or such author has been advised of the possibility of such damages.</liability>
+    <conformance>This XMPP Extension Protocol has been contributed in full conformance with the XSF's Intellectual Property Rights Policy (a copy of which may be found at &lt;<link url='http://xmpp.org/extensions/ipr-policy.shtml'>http://xmpp.org/extensions/ipr-policy.shtml</link>&gt; or obtained by writing to XSF, P.O. Box 1641, Denver, CO 80201 USA).</conformance>
+  </legal>
+  <number>xxxx</number>
+  <status>ProtoXEP</status>
+  <type>Standards Track</type>
+  <sig>Standards</sig>
+  <approver>Council</approver>
+  <dependencies>
+    <spec>XMPP Core</spec>
+    <spec>XEP-0163</spec>
+  </dependencies>
+  <supersedes/>
+  <supersededby/>
+  <shortname>NOT_YET_ASSIGNED</shortname>
+  <author>
+    <firstname>Fabian</firstname>
+    <surname>Beutel</surname>
+    <email>fabian.beutel@gmx.de</email>
+    <jid>fbeutel@jabber.at</jid>
+  </author>
+  <revision>
+    <version>0.0.1</version>
+    <date>2016-04-13</date>
+    <initials>fb</initials>
+    <remark><p>First draft.</p></remark>
+  </revision>
+</header>
+
+<section1 topic='Introduction' anchor='intro'>
+    <p>When using end to end encryption, users have to verify each other's keys before an authenticated connection can be established. Because this process is cumbersome, especially for average users, it should be kept to a minimum.</p>
+
+    <p>For example, when a contact adds a new device which uses a new key (e.g. because another key can't be safely transferred because it is on a smartcard that is incompatible with the new device), all contacts would have to re-verify the new key individually before they can start communicating with the user's new device.
+By providing a mechanism to cross-sign other keys one can eliminate the need of additional verification process: the user can sign the new key with the old key and publish the signature, so that contacts trusting the old key can safely trust the new key as well.</p>
+
+    <p>This specification provides a protocol-agnostic (with respect to the actual protocol used for the end-to-end encryption) method of publishing key signatures and verifying new keys.</p>
+
+    <section2 topic='Example scenarios' anchor='scenarios'>
+        There are several example scenarios that illustrate use cases of this sepcification:
+        
+        <ul>
+            <li><p>Alice has an xmpp client set up on her PC and now also installs one on her phone. She wants to use the key pair on her PC to sign the public key of her phone, but she can't transfer the private key to her phone, because it is stored on a smartcard.
+            Alice's phone client publishes it's public key as described below and displays the key's fingerprint. Her PC client downloads the new public key [1] and also displays the fingerprint.
+            If the two fingerprint match (Alice has to manually confirm this), the Desktop client signes the new public key with it's private key and uploads the signature to the server, as described below. The same happens the other way around (e.g. the client signs the Deskop's public key).</p></li>
+            <li><p>Bob wants to start encrypted communications with Alice, but when they meet in person, they only have their phones with them. Since Alice signed her phone key with her desktop client's key before and vice-versa, she can use her smartphone's key fingerprint and exchange it with Bob. After this procedure, Bob trusts Alice's phone key.
+            When Alice uses her PC to communicate with Bob later on, Bob's client can display the connection as trusted, since it can find a valid signature of the Desktop key signed with the trusted Phone key. Bob's client should from now on treat Alice's Desktop key also as trusted, so that it can be used to sign even more keys.</p></li>
+            <li><p>In the future, when either Alice or Bob add new devices, they don't need to re-exchange keys, as long as they verify the keys of their new devices themselves first.</p></li>
+            <li><p>Alice's phone gets stolen, so she wants to revoke the key that was on her phone. After changing the password for her XMPP account, she then publishes a key revoke notification so that all her contacts know that they can't trust the stolen key anymore.</p></li>
+            <li><p>Romeo and Juliet want to use perfect forward secrecy (as provided by OMEMO, for example). They already trust each other's PGP keys, but have not yet verified their OMEMO identity keys. By signing their identity keys with their PGP keys and publishing the signatures, they don't have to manually verify the OMEMO keys.</p></li>
+        </ul>
+    </section2>
+</section1>
+
+<section1 topic='Requirements' anchor='reqs'>
+    <ul>
+        <li>Provide the ability to publish public keys</li>
+        <li>Provide the ability to publish signatures (both for signing keys and signing arbitrary content)</li>
+        <li>Require no changes on the server side</li>
+        <li>Provide a standardized mechanism to verify a given key from the set of public keys</li>
+        <li>Provide a mechanism to revoke keys</li>
+        <li>Do <strong>not</strong> mandate when and how to trust keys. This is still up to client implementations or subject to user configuration.</li>
+    </ul>
+</section1>
+<section1 topic='Glossary' anchor='glossary'>
+  <dl>
+      <di><dt>Key ID</dt><dd>A unique id of a given key. Some protocols, such as PGP, already offer unique key IDs which can be used. Otherwise, the only requirement for key ids is to keep them unique in the context of one user (there MUST not be two keys with the same id published on the same node).</dd></di>
+      
+      <di><dt>Key Type</dt><dd>The type of a key. This specifies the technology that was used to create the key and that can be used to use the key. Types defined by this specification are:
+        <ul>
+            <li>"pgp" (a key as used by the OpenPGP protocols [...] and [...])</li>
+            <li>"omemo" (a key as used by the OMEMO protocol)</li>
+            <li>"x509" (a x.509 certificate)</li>
+        </ul>
+        
+        Other types can be defined by later revisions of this specification or by additional XEPs.</dd></di>
+    </dl>
+</section1>
+<section1 topic='Use Cases' anchor='usecases'>
+    <section2 topic='Publishing a key' anchor='publishkey'>
+        <p>When a new key is generated (e.g. at client install time), it can be made available by publishing an &lt;item/&gt; element with the key id as 'id' attribute and containing one &lt;key&gt; element to the node "urn:xmpp:ksev:0:keymetadata".</p>
+        <p>The &lt;key&gt; element MUST have a 'type' attribute (see <link url='#glossary'>Glossary</link>) and MAY contain one or more &lt;signed&gt; elements.
+        A &lt;signed> element indicates that the key has been signed by another key, which MUST be specified using the 'keyid' attribute.</p>
+        <example caption='Publishing public key metadata'><![CDATA[
+<iq from='juliet@capulet.lit' type='set' id='publish1'>
+  <pubsub xmlns='http://jabber.org/protocol/pubsub'>
+    <publish node='urn:xmpp:ksev:0:keymetadata'>
+      <item id='keyid'>
+        <key xmlns='urn:xmpp:ksev:0:keymetadata' type='pgp'>
+          <signed sigid='' />
+        </key>
+      </item>
+    </publish>
+  </pubsub>
+</iq>]]></example>
+
+    <p>Optionally, the &lt;key&gt; element MAY contain an &lt;url&gt; element which points to an external resource where the public key data can be found. If no such url is included, the key must be published to the user's PEP service as described in the following example.</p>
+    <p>The client publishes the acutal public key data by publishing an &lt;item/&gt; to the "urn:xmpp:ksev:0:data" node.
+        The &lt;item/&gt; element MUST contain one &lt;pubkey/&gt; element containing the BASE64 encoded key data.</p>
+    
+    <example caption='Publishing a public key'><![CDATA[
+<iq from='juliet@capulet.lit' type='set' id='publish2'>
+  <pubsub xmlns='http://jabber.org/protocol/pubsub'>
+    <publish node='urn:xmpp:ksev:0:data'>
+      <item id='keyid'>
+        <pubkey xmlns='urn:xmpp:ksev:0:data'>
+        ...BASE64 encoded public key...
+        </pubkey>
+      </item>
+    </publish>
+  </pubsub>
+</iq>]]></example>
+        
+    </section2>
+    
+    
+    <section2 topic='Publishing a signature' anchor='publishsignature'>
+        <p>A client can publish a signature of a key or other arbitrary data signed by another key.</p>
+        <p>Publishing a signature happens by publising an &lt;item/&gt; element with the signature id as 'id' attribute and containing one &lt;metadata/&gt; element to the node "urn:xmpp:ksev:0:sigmetadata".
+        The &lt;metadata/&gt; element MUST have a 'keyid' attribute, specifying the id of the key that was used to generate the signature and an optional 'keyowner' attribute that contains the jid of the owner of the key that was used to generate the signature. If the 'keyowner' attribute is omitted, the key has to be one of the keys published by the user himself.</p>
+    <p>The &lt;metadata/&gt; element MUST have either a 
+        <ul><li>&lt;url/&gt; element containing an URL pointing to an external resource with the signed content, or</li>
+            <li>a &lt;key/&gt; element, which MUST have a 'keyid' attribute (specifying the <strong>signed</strong> key and MAY have an optional 'keyowner' attribute.</li>
+        </ul></p>
+        <example caption='Publishing signature metadata'><![CDATA[
+<iq from='juliet@capulet.lit' type='set' id='sigpublish1'>
+  <pubsub xmlns='http://jabber.org/protocol/pubsub'>
+    <publish node='urn:xmpp:ksev:0:sigmetadata'>
+      <item id='signature_id'>
+        <metadata xmlns='urn:xmpp:ksev:0:sigmetadata' keyid='...id_of_the_signing_key...' keyowner='romeo@juliet@capulet.lit'>
+          <url>http://example.com/mydocument</url>
+          or
+          <key keyid='id_of_the_signed_key' keyowner='romeo@example.com'/>
+        </metadata>
+      </item>
+    </publish>
+  </pubsub>
+</iq>]]></example>
+
+<p>The &lt;metadata/&gt; element MAY contain one &lt;sigurl/&gt; element, specifying an external resource where to find the signature data. If it has no such element, the signature data MUST be published to the users "urn:xmpp:ksev:0:sig" node:</p>
+    
+    <example caption='Publishing signature metadata'><![CDATA[
+<iq from='juliet@capulet.lit' type='set' id='sigpublish2'>
+  <pubsub xmlns='http://jabber.org/protocol/pubsub'>
+    <publish node='urn:xmpp:ksev:0:sig'>
+      <item id='signature_id'>
+        <signature xmlns='urn:xmpp:ksev:0:sig'>
+          ...BASE64 encoded signature..
+        </signature>
+      </item>
+    </publish>
+  </pubsub>
+</iq>]]></example>
+
+    </section2>
+    
+    <section2 topic='Limiting Signature Lifetimes' anchor='limitsiglifetime'>
+        <p>In order to increase security, it may make sense to limit the validity of key signatures. For this purpose, the &lt;signature/&gt; element on the "urn:xmpp:ksev:0:sig" node may contain a 'expires' attribute, which contains a DateTime according to &xep0082;.
+            In case such an 'expires' attribute exists and is non-empty, the signed data MUST be prepended with the exact content of the 'expires' attribute before signing the concatenated data and creating the signature.</p>
+        <p>Another entity can then go through the same process (concatenate datetime + data to verify) and verify the signature on the concatenated data in order to make sure that the signature has not yet expired.</p>
+
+<example caption='Publishing a signature with limited lifetime'><![CDATA[
+<iq from='juliet@capulet.lit' type='set' id='sigpublish3'>
+  <pubsub xmlns='http://jabber.org/protocol/pubsub'>
+    <publish node='urn:xmpp:ksev:0:sig'>
+      <item id='signature_id'>
+        <signature xmlns='urn:xmpp:ksev:0:sig' expires='2017-07-21T02:56:15Z'>
+          ...BASE64 encoded signature of ['2017-07-21T02:56:15Z' + data]...
+        </signature>
+      </item>
+    </publish>
+  </pubsub>
+</iq>]]></example>
+
+        <p>For security reasons, entities SHOULD limit key signatures to one year or less.</p>
+    </section2>
+    
+    <section2 topic='Revoking a key' anchor='revokekey'>
+        <p>When a key is lost or should not be used anymore, the client can publish an &lt;item/&gt; with the key id as 'id' of the &lt;item/&gt; element to the "urn:xmpp:ksev:0:revoke" node. The &lt;item/&gt; MUST contain one empty &lt;revoked/&gt; child element.</p>
+        
+        <example caption='Revoking a key'><![CDATA[
+<iq from='juliet@capulet.lit' type='set' id='revoke1'>
+  <pubsub xmlns='http://jabber.org/protocol/pubsub'>
+    <publish node='urn:xmpp:ksev:0:revoke'>
+      <item id='key_id'>
+        <revoked xmlns='urn:xmpp:ksev:0:revoke' />
+      </item>
+    </publish>
+  </pubsub>
+</iq>]]></example>
+
+    </section2>
+    
+    <section2 topic='Verifying each others keys' anchor='verifykeys'>
+        <p>When two devices want to verify each other's keys, they have to display the same fingerprint on the screen. (The fingerprint can be encoded as QR-Code or similar, if supported, and automatically checked via Camera, but this will not be further discussed). The following section will describe a mechanism, both for two devices (resources) of the same user to verify (and optionally cross-sign) their keys, as well as for two distinct users to verify each other's keys.</p>
+            
+        <p>To start the key verification process, one client sends a &lt;message&gt; stanza to the target resource. The &lt;message&gt; stanza MUST have one &lt;verify&gt; child element and MUST posess a unique message id.</p>
+        <p>The &lt;verify&gt; element MUST have one 'hash' attribute specifying the mechanism that will be used to hash the fingerprint (see below). [todo: specify supported hashing algorithms]. It also contains one &lt;key&gt; element for each key that the initiating client has the private key for. The &lt;key&gt; element MUST have an 'id' attribute specifying the key id:</p>
+
+        <example caption='Initiating a key verification'><![CDATA[
+<message from='juliet@capulet.lit/orchard'
+         to='from='juliet@capulet.lit/balcony'
+         id='verifymsg1'>
+  <verify xmlns='urn:xmpp:ksev:0' hash='sha256'>
+    <key id='orchard_key_id' />
+    <key id='another_orchard_key_id' />
+  </verify>
+</message>]]></example>
+
+<p>If the message is directed to a specific resource, as in this example, the addressed resource can continue and SHOULD respond with a list of key ids that it has the private keys to:</p>
+<example caption='Responding to a key verification message'><![CDATA[
+<message from='juliet@capulet.lit/balcony'
+         to='from='juliet@capulet.lit/orchard'
+         id='verifymsg2'>
+  <verify xmlns='urn:xmpp:ksev:0' initial='verifymsg1'>
+    <key id='balconyd_key_id' />
+  </verify>
+</message>]]></example>
+
+<p>Immediately after receiving such a response, the initial client then responds with sending a &lt;done&gt; element referencing the id of the original message in the 'initial' attribute and the id of the response message in the 'response' attribute.
+    This concludes the communication between the two clients:</p>
+
+<example caption='Concluding the key verification negotiation'><![CDATA[
+<message from='juliet@capulet.lit/orchard'
+         to='from='juliet@capulet.lit/balcony'
+        id='verifymsg3'>
+  <done xmlns='urn:xmpp:ksev:0' initial='verifymsg1' response='verifymsg2' />
+</message>]]></example>
+
+<p>At this point, both clients obtain the public key data of all the keys that were mention in the previous verify messages. They then generate a fingerprint by following the following procedure:
+    <ul>
+        <li>They concatenate the public key data of all involved keys, ordered by the keyids. In the unlikely case that two keys (one of each JID) have the same id, they are ordered according to the order of the JIDs (orderd by Unicode codepoint of the KC-normalized unicode characters).(</li>
+        <li>They apply the specified hashing algorithm on the data [todo: multiple times?] accourding to the specified profile (see below) and display the resulting data to the user.</li>
+    </ul>
+    </p>
+    
+    <p>If the initial message was sent without specifying a particular receiver resource (e.g. because multiple resources are currently online), receiving resources MUST NOT respond automatically without consulting the user first (e.g. through a dialog window). Only after the user has selected to continue with the key verification process, the client MUST then continue with sending the response.</p>
+<p>After successful (or failed) verification, the initiating entity MUST send a &lt;done&gt; element referring to the initial message without specifying a receiver resource, so that other resources (that may also have displayed a dialog window) know that the verification process has taken place between the contact and a different resource.
+This solves the problem of possible race conditions between devices by passing on responsibility for deciding the race condition to the user.</p>
+
+<p>Note: If both parties, Alice and Bob, start the verification progress at the same time, there are two initiating messages and two response messages. A client SHOULD nevertheless only display the verification process once to avoid confusion (in this case both clients have the information twice, which doesn't do any harm). In this case, the hashing algorithm of the user with the "smaller" Jid wins (see above for details on JID ordering). If the losing client believes that the used hashing algorithm is not secure enough, it MAY start another verification procedure after the current one has been completed.</p>
+    
+    <section3 topic='Fingerprint mechanisms' anchor='fingerprints'>
+        todo: specify hashing mechanisms. A fingerprint mechanism has to specify the hashing algorithm, the number of times it is applied and the form of the final data that will be displayed to the user (e.g. groups of four characters, separated by ":").
+    </section3>
+    </section2>
+    
+    
+    
+</section1>
+<section1 topic='Business Rules' anchor='rules'>
+  <p>todo</p>
+</section1>
+<section1 topic='Implementation Notes' anchor='impl'>
+  <p>This specification does not mandate in which cases keys should be considered trusted. It only offers a way to publish signatures and negotiate key fingerprints, but it is up to the client and/or user to decide whether a signature or a chain of signatures is trustworthy.</p>
+</section1>
+<section1 topic='Security Considerations' anchor='security'>
+  <p>todo</p>
+</section1>
+<section1 topic='IANA Considerations' anchor='iana'>
+  <p>todo</p>
+</section1>
+<section1 topic='XMPP Registrar Considerations' anchor='registrar'>
+  <p>todo</p>
+</section1>
+<section1 topic='XML Schema' anchor='schema'>
+  <p>todo</p>
+</section1>
+</xep>
