@@ -216,7 +216,7 @@ By providing a mechanism to cross-sign other keys one can eliminate the need of 
 
         <example caption='Initiating a key verification'><![CDATA[
 <message from='juliet@capulet.lit/orchard'
-         to='from='juliet@capulet.lit/balcony'
+         to='juliet@capulet.lit/balcony'
          id='verifymsg1'>
   <verify xmlns='urn:xmpp:ksev:0' hash='sha-256'>
     <key id='orchard_key_id' />
@@ -227,7 +227,7 @@ By providing a mechanism to cross-sign other keys one can eliminate the need of 
 <p>If the message is directed to a specific resource, as in this example, the addressed resource can continue and SHOULD respond with a list of key ids that it has the private keys to:</p>
 <example caption='Responding to a key verification message'><![CDATA[
 <message from='juliet@capulet.lit/balcony'
-         to='from='juliet@capulet.lit/orchard'
+         to='juliet@capulet.lit/orchard'
          id='verifymsg2'>
   <verify xmlns='urn:xmpp:ksev:0' initial='verifymsg1'>
     <key id='balconyd_key_id' />
@@ -239,8 +239,8 @@ By providing a mechanism to cross-sign other keys one can eliminate the need of 
 
 <example caption='Concluding the key verification negotiation'><![CDATA[
 <message from='juliet@capulet.lit/orchard'
-         to='from='juliet@capulet.lit/balcony'
-        id='verifymsg3'>
+         to='juliet@capulet.lit/balcony'
+         id='verifymsg3'>
   <done xmlns='urn:xmpp:ksev:0' initial='verifymsg1' response='verifymsg2' />
 </message>]]></example>
 
